@@ -66,7 +66,10 @@ module "alb_controller" {
   region       = var.region
   vpc_id       = data.terraform_remote_state.networking.outputs.vpc_id
 
-  # Use the outputs your eks module actually exports
-  oidc_provider_arn = module.eks.cluster_oidc_provider_arn
-  oidc_provider_url = module.eks.cluster_oidc_provider
+  # Correct outputs coming from modules/aws/eks/outputs.tf
+  oidc_provider_arn = module.eks.oidc_provider_arn
+
+  # Most IRSA modules want the URL WITHOUT https://
+  oidc_provider_url = replace(module.eks.cluster_oidc_issuer_url, "https://", "")
 }
+
