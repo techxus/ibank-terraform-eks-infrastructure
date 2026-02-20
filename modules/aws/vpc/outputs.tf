@@ -1,9 +1,14 @@
-############################################
+########################################################################################
 # modules/aws/vpc/outputs.tf
 # Purpose:
 # - Export important values so OTHER stacks can reuse them.
 #   Example: EKS stack needs vpc_id + private subnet ids.
-############################################
+########################################################################################
+
+########################################################################################
+# Reference Documentation:
+# hhttps://registry.terraform.io/modules/terraform-aws-modules/vpc/aws/latest?tab=outputs
+########################################################################################
 
 output "vpc_id" {
   description = "The VPC ID"

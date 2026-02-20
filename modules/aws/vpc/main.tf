@@ -1,4 +1,4 @@
-############################################
+########################################################################################
 # modules/aws/vpc/main.tf
 # Purpose:
 # - Create the VPC, public subnets, private subnets
@@ -7,7 +7,12 @@
 # - "Public subnet" means it has a route to the Internet Gateway (IGW).
 # - "Private subnet" means it does NOT have a route to IGW.
 # - Private subnets usually reach the internet using NAT Gateway (outbound only).
-############################################
+########################################################################################
+
+########################################################################################
+# Reference Documentation:
+# https://registry.terraform.io/modules/terraform-aws-modules/vpc/aws/latest
+########################################################################################
 
 # Provider config lives in the module so it can run independently.
 provider "aws" {

@@ -1,4 +1,4 @@
-############################################
+########################################################################################
 # modules/aws/eks/main.tf
 # Purpose:
 # - Create EKS cluster + 2 managed node groups
@@ -7,7 +7,12 @@
 # Student notes:
 # - "module eks" below is a popular open-source module maintained by the community.
 # - We pass it inputs like vpc_id and subnet_ids to attach it to our VPC.
-############################################
+########################################################################################
+
+########################################################################################
+# Reference Documentation:
+# https://registry.terraform.io/modules/terraform-aws-modules/eks/aws/latest
+########################################################################################
 
 provider "aws" {
   region = var.region
