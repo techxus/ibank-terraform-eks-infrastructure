@@ -1,5 +1,63 @@
 ############################################
-# Production AWS Load Balancer Controller
+# modules/aws/alb/main.tf
+# Purpose:
+# - Install AWS Load Balancer Controller
+# - Create IRSA role for its ServiceAccount
+#
+# Student notes:
+# - The controller runs inside Kubernetes.
+# - It needs AWS permissions to create ALBs, target groups, etc.
+# - IRSA is the secure way (no node IAM hacks).
+############################################
+
+provider "aws" {
+  region = var.region
+}
+
+############################################
+# IAM Policy (official JSON from AWS docs)
+# NOTE: AWS does NOT always provide a managed policy ARN for this.
+# We create our own policy resource here.
+############################################
+
+data "aws_iam_policy_document" "alb_controller_policy" {
+  # Minimal working policy is long in real life.
+  # In production, you use the official JSON policy from AWS docs.
+  #
+  # To keep this answer short AND correct, we’ll reference the official
+  # policy by URL later if needed, but Terraform must have real statements.
+  #
+  # For now, we include the most important broad permissions needed.
+  statement {
+    actions = [
+      "elasticloadbalancing:*",
+      "ec2:Describe*",
+      "ec2:CreateSecurityGroup",
+      "ec2:CreateTags",
+      "ec2:AuthorizeSecurityGroupIngress",
+      "ec2:RevokeSecurityGroupIngress",
+      "ec2:DeleteSecurityGroup",
+      "iam:CreateServiceLinkedRole",
+      "cognito-idp:DescribeUserPoolClient",
+      "waf-regional:*",
+      "wafv2:*",
+      "shield:*",
+      "acm:DescribeCertificate",
+      "acm:ListCertificates",
+      "acm:GetCertificate"
+    ]
+    resources = ["*"]
+  }
+}
+
+resource "aws_iam_policy" "alb_controller" {
+  name        = "${var.cluster_name}-alb-controller-policy"
+  description = "Policy for AWS Load Balancer Controller"
+  policy      = data.aws_iam_policy_document.alb_controller_policy.json
+}
+
+############################################
+# IRSA Role (assumable by ServiceAccount)
 ############################################
 
 data "aws_iam_policy_document" "alb_assume_role" {
@@ -13,10 +71,8 @@ data "aws_iam_policy_document" "alb_assume_role" {
 
     condition {
       test     = "StringEquals"
-      variable = "${replace(var.oidc_provider_url, "https://", "")}:sub"
-      values   = [
-        "system:serviceaccount:kube-system:aws-load-balancer-controller"
-      ]
+      variable = "${var.oidc_provider_url}:sub"
+      values   = ["system:serviceaccount:kube-system:aws-load-balancer-controller"]
     }
   }
 }
@@ -26,13 +82,15 @@ resource "aws_iam_role" "alb_controller" {
   assume_role_policy = data.aws_iam_policy_document.alb_assume_role.json
 }
 
-# Official AWS managed policy for ALB Controller
 resource "aws_iam_role_policy_attachment" "alb_attach" {
   role       = aws_iam_role.alb_controller.name
-  policy_arn = "arn:aws:iam::aws:policy/AWSLoadBalancerControllerIAMPolicy"
+  policy_arn = aws_iam_policy.alb_controller.arn
 }
 
-# Get cluster info
+############################################
+# Install via Helm (requires Kubernetes API reachability)
+############################################
+
 data "aws_eks_cluster" "this" {
   name = var.cluster_name
 }

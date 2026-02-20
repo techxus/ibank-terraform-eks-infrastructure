@@ -1,5 +1,7 @@
 ############################################
-# Inputs required for ALB Controller
+# modules/aws/alb/variables.tf
+# Purpose:
+# - Inputs for AWS Load Balancer Controller install (IRSA + Helm)
 ############################################
 
 variable "cluster_name" {
@@ -13,16 +15,16 @@ variable "region" {
 }
 
 variable "vpc_id" {
-  description = "VPC ID where ALBs will be created"
+  description = "VPC ID"
   type        = string
 }
 
 variable "oidc_provider_arn" {
-  description = "OIDC provider ARN from EKS"
+  description = "OIDC Provider ARN (from EKS outputs)"
   type        = string
 }
 
 variable "oidc_provider_url" {
-  description = "OIDC provider URL from EKS"
+  description = "OIDC issuer URL (should be WITHOUT https:// for IRSA condition)"
   type        = string
 }

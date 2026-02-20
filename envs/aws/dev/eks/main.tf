@@ -68,11 +68,8 @@ module "alb_controller" {
 
   oidc_provider_arn = module.eks.oidc_provider_arn
 
-  # Prefer issuer URL without https:// (common IRSA requirement)
-  oidc_provider_url = try(
-    module.eks.oidc_provider,
-    replace(module.eks.cluster_oidc_issuer_url, "https://", "")
-  )
+  # Normalize to "no https://" for IRSA condition
+  oidc_provider_url = replace(module.eks.oidc_provider, "https://", "")
 }
 
 

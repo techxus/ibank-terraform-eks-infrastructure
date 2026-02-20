@@ -11,21 +11,21 @@
 ########################################################################################
 
 output "vpc_id" {
-  description = "The VPC ID"
+  description = "VPC ID"
   value       = module.vpc.vpc_id
 }
 
 output "private_subnet_ids" {
-  description = "Private subnet IDs (place EKS worker nodes here)"
+  description = "Private subnet IDs"
   value       = module.vpc.private_subnets
 }
 
 output "public_subnet_ids" {
-  description = "Public subnet IDs (host NAT Gateway, optional public LB)"
+  description = "Public subnet IDs"
   value       = module.vpc.public_subnets
 }
 
 output "vpc_cidr" {
-  description = "VPC CIDR block"
+  description = "VPC CIDR"
   value       = var.vpc_cidr
 }

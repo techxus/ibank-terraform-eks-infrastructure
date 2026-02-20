@@ -1,11 +1,15 @@
 ############################################
 # modules/aws/vpc/variables.tf
 # Purpose:
-# - Define the INPUTS this module expects.
-# - These are "knobs" that envs (dev/stage/prod) can set.
+# - Declare inputs for the VPC module
+#
+# Student notes:
+# - "variables.tf" defines what inputs are allowed.
+# - Values come from env terraform.tfvars.
 ############################################
+
 variable "region" {
-  description = "AWS region where we create the VPC"
+  description = "AWS region (example: us-east-1)"
   type        = string
 }
 
@@ -15,29 +19,29 @@ variable "env" {
 }
 
 variable "vpc_name" {
-  description = "Name tag for the VPC"
+  description = "Name tag for VPC"
   type        = string
 }
 
 variable "vpc_cidr" {
-  description = "The VPC CIDR block (example: 10.0.0.0/16)"
+  description = "VPC CIDR range (example: 10.10.0.0/16)"
   type        = string
 }
 
 variable "az_count" {
-  description = "How many Availability Zones to spread across (usually 2 or 3)"
+  description = "Number of availability zones to use (2 or 3 are common)"
   type        = number
   default     = 3
 }
 
 variable "single_nat_gateway" {
-  description = "If true, create ONE NAT Gateway (cheaper). If false, one per AZ (more resilient, more expensive)."
+  description = "If true, create 1 NAT Gateway to reduce cost (less HA)"
   type        = bool
   default     = true
 }
 
 variable "tags" {
-  description = "Extra AWS tags for all resources"
+  description = "Extra tags for AWS resources"
   type        = map(string)
   default     = {}
 }

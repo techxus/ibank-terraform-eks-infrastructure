@@ -15,11 +15,22 @@ output "cluster_name" {
 }
 
 output "cluster_endpoint" {
-  description = "EKS API server endpoint"
+  description = "EKS cluster endpoint"
   value       = module.eks.cluster_endpoint
 }
 
 output "cluster_security_group_id" {
-  description = "Security group attached to the EKS control plane"
+  description = "EKS control plane security group"
   value       = module.eks.cluster_security_group_id
+}
+
+# These two are the ones you need for IRSA
+output "oidc_provider_arn" {
+  description = "OIDC provider ARN (IRSA)"
+  value       = module.eks.oidc_provider_arn
+}
+
+output "oidc_provider" {
+  description = "OIDC provider URL (IRSA). Often without https://"
+  value       = module.eks.oidc_provider
 }

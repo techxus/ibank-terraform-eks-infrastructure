@@ -33,8 +33,4 @@ output "oidc_provider" {
   value       = module.eks.oidc_provider
 }
 
-output "cluster_oidc_issuer_url" {
-  description = "OIDC issuer URL (with https://) if exposed by the upstream EKS module."
-  value       = module.eks.cluster_oidc_issuer_url
-}
 
