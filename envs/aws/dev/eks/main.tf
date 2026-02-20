@@ -55,3 +55,18 @@ module "eks" {
     Owner = "PlatformTeam"
   }
 }
+
+########################################################################################
+# Install AWS Load Balancer Controller
+########################################################################################
+module "alb_controller" {
+  source = "../../../../modules/aws/alb"
+
+  cluster_name = module.eks.cluster_name
+  region       = var.region
+  vpc_id       = data.terraform_remote_state.networking.outputs.vpc_id
+
+  # Use the outputs your eks module actually exports
+  oidc_provider_arn = module.eks.cluster_oidc_provider_arn
+  oidc_provider_url = module.eks.cluster_oidc_provider
+}
