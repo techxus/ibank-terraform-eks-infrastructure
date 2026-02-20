@@ -18,3 +18,8 @@ output "oidc_provider_url" {
   description = "OIDC issuer URL (for IRSA)"
   value       = module.eks.oidc_provider
 }
+
+output "alb_controller_role_arn" {
+  description = "IAM Role ARN used by AWS Load Balancer Controller (IRSA)"
+  value       = aws_iam_role.alb_controller.arn
+}

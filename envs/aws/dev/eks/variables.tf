@@ -71,7 +71,7 @@ variable "ng2_desired_size" {
 }
 
 variable "install_cluster_addons" {
-  description = "If true, install in-cluster add-ons (ALB controller) via Helm"
+  description = "If true, install cluster add-ons like AWS Load Balancer Controller via Helm."
   type        = bool
   default     = true
 }
