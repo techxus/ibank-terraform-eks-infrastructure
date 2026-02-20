@@ -87,3 +87,13 @@ resource "helm_release" "aws_load_balancer_controller" {
     })
   ]
 }
+
+module "alb_controller" {
+  source = "../../../../modules/aws/alb"
+
+  cluster_name      = module.eks.cluster_name
+  region            = var.region
+  vpc_id            = data.terraform_remote_state.networking.outputs.vpc_id
+  oidc_provider_arn = module.eks.oidc_provider_arn
+  oidc_provider_url = module.eks.oidc_provider
+}

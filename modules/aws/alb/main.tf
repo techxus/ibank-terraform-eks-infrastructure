@@ -1,68 +1,46 @@
 ############################################
 # modules/aws/alb/main.tf
 # Purpose:
-# - Install AWS Load Balancer Controller
-# - Create IRSA role for its ServiceAccount
+# - Create IRSA role for AWS Load Balancer Controller
+# - Install controller via Helm chart in kube-system namespace
 #
-# Student notes:
-# - The controller runs inside Kubernetes.
-# - It needs AWS permissions to create ALBs, target groups, etc.
-# - IRSA is the secure way (no node IAM hacks).
+# IMPORTANT:
+# - This module expects the *caller* to configure AWS credentials.
+# - This module expects the *caller* to configure Helm/Kubernetes providers.
 ############################################
 
-provider "aws" {
-  region = var.region
-}
-
-############################################
-# IAM Policy (official JSON from AWS docs)
-# NOTE: AWS does NOT always provide a managed policy ARN for this.
-# We create our own policy resource here.
-############################################
-
-data "aws_iam_policy_document" "alb_controller_policy" {
-  # Minimal working policy is long in real life.
-  # In production, you use the official JSON policy from AWS docs.
-  #
-  # To keep this answer short AND correct, we’ll reference the official
-  # policy by URL later if needed, but Terraform must have real statements.
-  #
-  # For now, we include the most important broad permissions needed.
-  statement {
-    actions = [
-      "elasticloadbalancing:*",
-      "ec2:Describe*",
-      "ec2:CreateSecurityGroup",
-      "ec2:CreateTags",
-      "ec2:AuthorizeSecurityGroupIngress",
-      "ec2:RevokeSecurityGroupIngress",
-      "ec2:DeleteSecurityGroup",
-      "iam:CreateServiceLinkedRole",
-      "cognito-idp:DescribeUserPoolClient",
-      "waf-regional:*",
-      "wafv2:*",
-      "shield:*",
-      "acm:DescribeCertificate",
-      "acm:ListCertificates",
-      "acm:GetCertificate"
-    ]
-    resources = ["*"]
+terraform {
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = ">= 5.0"
+    }
+    helm = {
+      source  = "hashicorp/helm"
+      version = ">= 2.0"
+    }
+    kubernetes = {
+      source  = "hashicorp/kubernetes"
+      version = ">= 2.0"
+    }
   }
 }
 
-resource "aws_iam_policy" "alb_controller" {
-  name        = "${var.cluster_name}-alb-controller-policy"
-  description = "Policy for AWS Load Balancer Controller"
-  policy      = data.aws_iam_policy_document.alb_controller_policy.json
+locals {
+  # IRSA typically wants the issuer without https://
+  oidc_issuer_no_scheme = replace(var.oidc_provider_url, "https://", "")
+
+  sa_namespace = "kube-system"
+  sa_name      = "aws-load-balancer-controller"
 }
 
 ############################################
-# IRSA Role (assumable by ServiceAccount)
+# IRSA trust policy (service account -> IAM role)
 ############################################
-
 data "aws_iam_policy_document" "alb_assume_role" {
   statement {
     actions = ["sts:AssumeRoleWithWebIdentity"]
+    effect  = "Allow"
 
     principals {
       type        = "Federated"
@@ -71,8 +49,8 @@ data "aws_iam_policy_document" "alb_assume_role" {
 
     condition {
       test     = "StringEquals"
-      variable = "${var.oidc_provider_url}:sub"
-      values   = ["system:serviceaccount:kube-system:aws-load-balancer-controller"]
+      variable = "${local.oidc_issuer_no_scheme}:sub"
+      values   = ["system:serviceaccount:${local.sa_namespace}:${local.sa_name}"]
     }
   }
 }
@@ -82,43 +60,42 @@ resource "aws_iam_role" "alb_controller" {
   assume_role_policy = data.aws_iam_policy_document.alb_assume_role.json
 }
 
+############################################
+# IAM permissions for the controller
+#
+# NOTE:
+# AWS does NOT provide an AWS-managed policy ARN called
+# AWSLoadBalancerControllerIAMPolicy by default.
+#
+# In production you create a customer-managed policy using the official JSON
+# from AWS docs and attach it here.
+############################################
+
+# OPTION A (recommended): keep policy JSON in repo (fully automated)
+# Create a file: modules/aws/alb/iam_policy.json
+# and load it using file().
+resource "aws_iam_policy" "alb_controller" {
+  name        = "${var.cluster_name}-AWSLoadBalancerControllerIAMPolicy"
+  description = "Permissions for AWS Load Balancer Controller"
+  policy      = file("${path.module}/iam_policy.json")
+}
+
 resource "aws_iam_role_policy_attachment" "alb_attach" {
   role       = aws_iam_role.alb_controller.name
   policy_arn = aws_iam_policy.alb_controller.arn
 }
 
 ############################################
-# Install via Helm (requires Kubernetes API reachability)
+# Helm install
 ############################################
-
-data "aws_eks_cluster" "this" {
-  name = var.cluster_name
-}
-
-data "aws_eks_cluster_auth" "this" {
-  name = var.cluster_name
-}
-
-provider "kubernetes" {
-  host                   = data.aws_eks_cluster.this.endpoint
-  cluster_ca_certificate = base64decode(data.aws_eks_cluster.this.certificate_authority[0].data)
-  token                  = data.aws_eks_cluster_auth.this.token
-}
-
-provider "helm" {
-  kubernetes {
-    host                   = data.aws_eks_cluster.this.endpoint
-    cluster_ca_certificate = base64decode(data.aws_eks_cluster.this.certificate_authority[0].data)
-    token                  = data.aws_eks_cluster_auth.this.token
-  }
-}
-
 resource "helm_release" "alb_controller" {
   name       = "aws-load-balancer-controller"
-  namespace  = "kube-system"
+  namespace  = local.sa_namespace
   repository = "https://aws.github.io/eks-charts"
   chart      = "aws-load-balancer-controller"
-  version    = "1.7.2"
+
+  # Pin a known-good version (you can bump later intentionally)
+  version = "1.7.2"
 
   values = [
     yamlencode({
@@ -128,7 +105,7 @@ resource "helm_release" "alb_controller" {
 
       serviceAccount = {
         create = true
-        name   = "aws-load-balancer-controller"
+        name   = local.sa_name
         annotations = {
           "eks.amazonaws.com/role-arn" = aws_iam_role.alb_controller.arn
         }

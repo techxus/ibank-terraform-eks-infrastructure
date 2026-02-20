@@ -1,7 +1,10 @@
 ############################################
 # modules/aws/alb/variables.tf
 # Purpose:
-# - Inputs for AWS Load Balancer Controller install (IRSA + Helm)
+# - Inputs required to install AWS Load Balancer Controller
+# Notes:
+# - This module NEVER references module.eks.*
+# - The env root passes in EKS outputs as variables
 ############################################
 
 variable "cluster_name" {
@@ -15,16 +18,16 @@ variable "region" {
 }
 
 variable "vpc_id" {
-  description = "VPC ID"
+  description = "VPC ID where EKS runs"
   type        = string
 }
 
 variable "oidc_provider_arn" {
-  description = "OIDC Provider ARN (from EKS outputs)"
+  description = "OIDC provider ARN for the cluster (IRSA)"
   type        = string
 }
 
 variable "oidc_provider_url" {
-  description = "OIDC issuer URL (should be WITHOUT https:// for IRSA condition)"
+  description = "OIDC issuer URL for the cluster (can be with or without https://)"
   type        = string
 }
