@@ -124,7 +124,6 @@ resource "aws_instance" "hcp_agent" {
     # Run HCP Terraform Agent container
     docker run -d --restart unless-stopped \
       --name hcp-terraform-agent \
-      -e TFC_AGENT_TOKEN="${var.hcp_agent_token}" \
       hashicorp/tfc-agent:latest
   EOF
 
