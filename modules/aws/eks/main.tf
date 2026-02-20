@@ -20,13 +20,13 @@ resource "random_string" "suffix" {
 
 locals {
   # Make cluster name unique so multiple students can run it without collisions
-  cluster_name = "${var.cluster_name_prefix}-${var.env}-eks-${random_string.suffix.result}"
+  cluster_name = "${var.cluster_name_prefix}-${var.env}-eks"
 
   common_tags = merge(
     {
       Environment = var.env
       ManagedBy   = "Terraform"
-      Project     = "iBank"
+      Project     = "iBank EKS Infrastructure Project"
     },
     var.tags
   )
