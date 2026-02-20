@@ -23,6 +23,14 @@ data "terraform_remote_state" "networking" {
   }
 }
 
+data "aws_eks_cluster" "this" {
+  name = module.eks.cluster_name
+}
+
+data "aws_eks_cluster_auth" "this" {
+  name = module.eks.cluster_name
+}
+
 module "eks" {
   source = "../../../../modules/aws/eks"
 
@@ -63,10 +71,14 @@ module "alb_controller" {
   count  = var.install_cluster_addons ? 1 : 0
   source = "../../../../modules/aws/alb"
 
-  cluster_name = module.eks.cluster_name
-  region       = var.region
-  vpc_id       = data.terraform_remote_state.networking.outputs.vpc_id
+  providers = {
+    kubernetes = kubernetes
+    helm       = helm
+  }
 
+  cluster_name      = module.eks.cluster_name
+  region            = var.region
+  vpc_id            = data.terraform_remote_state.networking.outputs.vpc_id
   oidc_provider_arn = module.eks.oidc_provider_arn
   oidc_provider_url = replace(module.eks.oidc_provider, "https://", "")
 }
@@ -79,3 +91,16 @@ variable "install_cluster_addons" {
   type    = bool
   default = false
 }
+
+provider "kubernetes" {
+  host                   = data.aws_eks_cluster.this.endpoint
+  cluster_ca_certificate = base64decode(data.aws_eks_cluster.this.certificate_authority[0].data)
+  token                  = data.aws_eks_cluster_auth.this.token
+}
+
+provider "helm" {
+  kubernetes {
+    host                   = data.aws_eks_cluster.this.endpoint
+    cluster_ca_certificate = base64decode(data.aws_eks_cluster.this.certificate_authority[0].data)
+    token                  = data.aws_eks_cluster_auth.this.token
+  }
