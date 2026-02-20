@@ -1,58 +1,77 @@
-############################################################
-# modules/eks/variables.tf
-#
-# - A "module" is a reusable blueprint.
-# - This module builds VPC + EKS.
-# - We accept ONE input called "config" (an object).
-# - This avoids declaring 20 separate variables in many places.
-############################################################
+############################################
+# modules/aws/eks/variables.tf
+# Purpose:
+# - Define all inputs EKS needs
+# Student notes:
+# - The ENV folder sets values (terraform.tfvars)
+# - The module declares what is allowed (variables.tf)
+############################################
 
-variable "config" {
-  description = "All environment settings (dev/stage/prod) passed as one object"
-  type = object({
-    ########################################################
-    # Basic identity
-    ########################################################
-    region = string       # AWS region, ex: "us-east-1"
-    env    = string       # environment name, ex: "dev"
+variable "region" {
+  description = "AWS region"
+  type        = string
+}
 
-    ########################################################
-    # Networking (VPC)
-    ########################################################
-    vpc_cidr = string     # ex: "10.10.0.0/16"
-    az_count = number     # how many AZs to use (2 or 3 typical)
+variable "env" {
+  description = "dev, stage, prod"
+  type        = string
+}
 
-    enable_nat_gateway = bool # NAT allows private subnets to reach internet outbound
-    single_nat_gateway = bool # true=cheaper, false=more HA
+variable "cluster_name_prefix" {
+  description = "Prefix for cluster name (we add random suffix)"
+  type        = string
+  default     = "ibank"
+}
 
-    ########################################################
-    # Naming & tagging
-    ########################################################
-    name_prefix = string  # ex: "ibank"
-    project_tag = string  # ex: "iBank EKS"
+variable "cluster_version" {
+  description = "Kubernetes version"
+  type        = string
+  default     = "1.29"
+}
 
-    ########################################################
-    # EKS control plane
-    ########################################################
-    cluster_version = string # ex: "1.29"
+# Networking inputs come from the networking workspace
+variable "vpc_id" {
+  description = "VPC ID where EKS will live"
+  type        = string
+}
 
-    # Private-only cluster API is most secure (prod standard)
-    cluster_endpoint_public_access  = bool
-    cluster_endpoint_private_access = bool
+variable "private_subnet_ids" {
+  description = "Private subnets for EKS worker nodes"
+  type        = list(string)
+}
 
-    ########################################################
-    # Node groups (2 groups, like your original tutorial)
-    ########################################################
-    node_instance_type = string # ex: "t3.small", "m6i.large"
+# Endpoint flags (private-only cluster API)
+variable "cluster_endpoint_public_access" {
+  description = "If true, EKS API endpoint is reachable from the internet"
+  type        = bool
+  default     = false
+}
 
-    # Node group 1 sizing
-    ng1_min     = number
-    ng1_max     = number
-    ng1_desired = number
+variable "cluster_endpoint_private_access" {
+  description = "If true, EKS API endpoint is reachable from inside the VPC"
+  type        = bool
+  default     = true
+}
 
-    # Node group 2 sizing
-    ng2_min     = number
-    ng2_max     = number
-    ng2_desired = number
-  })
+# Node sizing knobs
+variable "node_instance_type" {
+  description = "EC2 type for worker nodes (example: t3.small)"
+  type        = string
+  default     = "t3.small"
+}
+
+# Node group 1
+variable "ng1_min_size"     { type = number, default = 1 }
+variable "ng1_max_size"     { type = number, default = 3 }
+variable "ng1_desired_size" { type = number, default = 2 }
+
+# Node group 2
+variable "ng2_min_size"     { type = number, default = 1 }
+variable "ng2_max_size"     { type = number, default = 2 }
+variable "ng2_desired_size" { type = number, default = 1 }
+
+variable "tags" {
+  description = "Extra tags"
+  type        = map(string)
+  default     = {}
 }

@@ -1,7 +1,8 @@
 ############################################
-# modules/aws/eks/terraform.tf
+# modules/aws/vpc/terraform.tf
 # Purpose:
-# - Providers and versions needed by the EKS module
+# - Declare which Terraform version we support
+# - Declare providers we use (aws)
 ############################################
 
 terraform {
@@ -11,10 +12,6 @@ terraform {
     aws = {
       source  = "hashicorp/aws"
       version = "~> 5.47"
-    }
-    random = {
-      source  = "hashicorp/random"
-      version = "~> 3.6"
     }
   }
 }

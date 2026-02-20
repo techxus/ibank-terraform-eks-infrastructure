@@ -1,7 +1,8 @@
 ############################################
-# modules/aws/eks/terraform.tf
+# envs/aws/dev/networking/terraform.tf
 # Purpose:
-# - Providers and versions needed by the EKS module
+# - This folder is a "root module"
+# - HCP Terraform runs THIS folder and stores state for DEV networking
 ############################################
 
 terraform {
@@ -11,10 +12,6 @@ terraform {
     aws = {
       source  = "hashicorp/aws"
       version = "~> 5.47"
-    }
-    random = {
-      source  = "hashicorp/random"
-      version = "~> 3.6"
     }
   }
 }
