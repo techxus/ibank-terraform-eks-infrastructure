@@ -24,3 +24,5 @@ ng1_desired_size = 1
 ng2_min_size     = 1
 ng2_max_size     = 2
 ng2_desired_size = 1
+
+vinstall_cluster_addons = false

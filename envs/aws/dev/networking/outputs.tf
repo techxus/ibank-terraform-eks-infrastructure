@@ -16,3 +16,16 @@ output "private_subnet_ids" {
 output "public_subnet_ids" {
   value = module.vpc.public_subnet_ids
 }
+
+############################################
+# Agent outputs (useful for debugging / SSM access)
+############################################
+output "hcp_agent_instance_id" {
+  description = "EC2 instance id for the HCP Terraform Agent"
+  value       = aws_instance.hcp_agent.id
+}
+
+output "hcp_agent_private_ip" {
+  description = "Private IP of the agent instance"
+  value       = aws_instance.hcp_agent.private_ip
+}

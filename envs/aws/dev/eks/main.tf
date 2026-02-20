@@ -60,6 +60,7 @@ module "eks" {
 # Install AWS Load Balancer Controller
 ########################################################################################
 module "alb_controller" {
+  count  = var.install_cluster_addons ? 1 : 0
   source = "../../../../modules/aws/alb"
 
   cluster_name = module.eks.cluster_name
@@ -67,9 +68,14 @@ module "alb_controller" {
   vpc_id       = data.terraform_remote_state.networking.outputs.vpc_id
 
   oidc_provider_arn = module.eks.oidc_provider_arn
-
-  # Normalize to "no https://" for IRSA condition
   oidc_provider_url = replace(module.eks.oidc_provider, "https://", "")
 }
 
-
+############################################
+# Toggle installing in-cluster add-ons
+# Student note: private EKS requires running Terraform inside VPC (Agent)
+############################################
+variable "install_cluster_addons" {
+  type    = bool
+  default = false
+}

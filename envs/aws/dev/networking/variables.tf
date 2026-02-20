@@ -19,3 +19,15 @@ variable "single_nat_gateway" {
   type    = bool
   default = true
 }
+
+############################################
+# HCP Terraform Agent token (SENSITIVE)
+# Student notes:
+# - Store this in HCP workspace variables.
+# - Mark it "Sensitive" so it is never shown in logs.
+############################################
+variable "hcp_agent_token" {
+  description = "HCP Terraform Agent token (SENSITIVE)"
+  type        = string
+  sensitive   = true
+}
