@@ -19,14 +19,22 @@ output "cluster_security_group_id" {
   value       = module.eks.cluster_security_group_id
 }
 
+############################################
+# OIDC outputs (used for IRSA)
+############################################
 
-output "oidc_provider_arn"  {
-  value = module.eks.oidc_provider_arn
-  description = "ARN of the OIDC provider created for the EKS cluster. This is needed for IRSA (IAM Roles for Service Accounts) to work, and is used by the ALB Controller module to create an IAM role for the controller's service account."
+output "oidc_provider_arn" {
+  description = "ARN of the IAM OIDC Provider for this cluster (used by IRSA)."
+  value       = module.eks.oidc_provider_arn
+}
+
+output "oidc_provider" {
+  description = "OIDC issuer URL (often without https://) as exposed by the upstream EKS module."
+  value       = module.eks.oidc_provider
 }
 
 output "cluster_oidc_issuer_url" {
-  value = module.eks.cluster_oidc_issuer_url
-  description = "URL of the OIDC issuer for the EKS cluster. This is needed for IRSA (IAM Roles for Service Accounts) to work, and is used by the ALB Controller module to create an IAM role for the controller's service account. Note that some IRSA modules expect this URL without the 'https://' prefix, so you may need to use the 'replace' function when passing this output to those modules."
+  description = "OIDC issuer URL (with https://) if exposed by the upstream EKS module."
+  value       = module.eks.cluster_oidc_issuer_url
 }
 
