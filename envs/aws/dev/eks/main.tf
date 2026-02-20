@@ -74,6 +74,7 @@ module "alb_controller" {
   providers = {
     kubernetes = kubernetes
     helm       = helm
+    aws        = aws
   }
 
   cluster_name      = module.eks.cluster_name
