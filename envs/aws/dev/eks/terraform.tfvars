@@ -1,7 +1,7 @@
 ############################################
 # envs/aws/dev/eks/terraform.tfvars
 # Purpose:
-# - DEV values only
+# - DEV environment values only.
 ############################################
 
 region = "us-east-1"
@@ -10,19 +10,20 @@ env    = "dev"
 cluster_name_prefix = "ibank"
 cluster_version     = "1.29"
 
-# Private-only cluster endpoint (recommended)
+# Private-only API endpoint (production-grade)
 cluster_endpoint_public_access  = false
 cluster_endpoint_private_access = true
 
-# Dev cost control
+# Cost control (dev)
 node_instance_type = "t3.small"
 
 ng1_min_size     = 1
-ng1_max_size     = 2
-ng1_desired_size = 1
+ng1_max_size     = 3
+ng1_desired_size = 2
 
 ng2_min_size     = 1
 ng2_max_size     = 2
 ng2_desired_size = 1
 
-vinstall_cluster_addons = false
+# We want full automation
+install_cluster_addons = true

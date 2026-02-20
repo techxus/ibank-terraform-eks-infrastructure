@@ -1,22 +1,12 @@
-########################################################################################
+############################################
 # modules/aws/eks/main.tf
 # Purpose:
-# - Create EKS cluster + 2 managed node groups
-# - Private-only EKS API endpoint (recommended)
+# - Create an EKS cluster and managed node groups (AWS resources only).
 #
 # Student notes:
-# - "module eks" below is a popular open-source module maintained by the community.
-# - We pass it inputs like vpc_id and subnet_ids to attach it to our VPC.
-########################################################################################
-
-########################################################################################
-# Reference Documentation:
-# https://registry.terraform.io/modules/terraform-aws-modules/eks/aws/latest
-########################################################################################
-
-provider "aws" {
-  region = var.region
-}
+# - Modules should NOT define provider blocks inside them in modern Terraform.
+# - Providers are configured in the ROOT (env) folder and passed in automatically.
+############################################
 
 resource "random_string" "suffix" {
   length  = 8
@@ -24,7 +14,9 @@ resource "random_string" "suffix" {
 }
 
 locals {
-  # Make cluster name unique so multiple students can run it without collisions
+  # Cluster name is stable and environment-specific
+  # NOTE: If you want uniqueness, add suffix back in:
+  # cluster_name = "${var.cluster_name_prefix}-${var.env}-eks-${random_string.suffix.result}"
   cluster_name = "${var.cluster_name_prefix}-${var.env}-eks"
 
   common_tags = merge(
@@ -48,19 +40,19 @@ module "eks" {
   cluster_endpoint_public_access  = var.cluster_endpoint_public_access
   cluster_endpoint_private_access = var.cluster_endpoint_private_access
 
-  # Helpful for labs; in strict enterprises you manage access more tightly
+  # OK for labs; in strict enterprises you manage access more tightly
   enable_cluster_creator_admin_permissions = true
 
   # Attach cluster to existing VPC
   vpc_id     = var.vpc_id
   subnet_ids = var.private_subnet_ids
 
-  # Defaults for node groups
+  # Node group defaults
   eks_managed_node_group_defaults = {
     ami_type = "AL2_x86_64"
   }
 
-  # Two node groups (good for teaching scaling + separation)
+  # Two managed node groups
   eks_managed_node_groups = {
     one = {
       name           = "node-group-1"
@@ -84,6 +76,19 @@ module "eks" {
   tags = local.common_tags
 }
 
+############################################
+# Providers for talking to the EKS cluster
+# Purpose:
+# - Helm install of ALB controller happens in the ROOT stack.
+#
+# Student notes:
+# - This works because HCP runs via Agent inside the VPC.
+############################################
+
+provider "aws" {
+  region = var.region
+}
+
 data "aws_eks_cluster" "this" {
   name = module.eks.cluster_name
 }
@@ -105,4 +110,3 @@ provider "helm" {
     token                  = data.aws_eks_cluster_auth.this.token
   }
 }
-
