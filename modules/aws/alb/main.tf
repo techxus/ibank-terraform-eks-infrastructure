@@ -9,23 +9,6 @@
 # - This module expects the *caller* to configure Helm/Kubernetes providers.
 ############################################
 
-terraform {
-  required_providers {
-    aws = {
-      source  = "hashicorp/aws"
-      version = ">= 5.0"
-    }
-    helm = {
-      source  = "hashicorp/helm"
-      version = ">= 2.0"
-    }
-    kubernetes = {
-      source  = "hashicorp/kubernetes"
-      version = ">= 2.0"
-    }
-  }
-}
-
 locals {
   # IRSA typically wants the issuer without https://
   oidc_issuer_no_scheme = replace(var.oidc_provider_url, "https://", "")
