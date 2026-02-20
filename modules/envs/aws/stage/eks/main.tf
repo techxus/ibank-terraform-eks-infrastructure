@@ -4,6 +4,6 @@
 ############################################################
 
 module "eks" {
-  source = "../../modules/eks"
+  source = "../../../../modules/aws/eks"
   config = var.config
 }

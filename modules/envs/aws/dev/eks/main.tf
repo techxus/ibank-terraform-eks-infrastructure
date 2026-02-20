@@ -6,7 +6,7 @@
 ############################################################
 
 module "eks" {
-  source = "../../modules/eks"
+  source = "../../../../modules/aws/eks"
 
   # Pass the whole config object into the module
   config = var.config

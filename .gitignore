@@ -1,7 +1,11 @@
-# Local .terraform directories
-.terraform/
+# Terraform local cache (never commit)
 **/.terraform/
 **/.terraform.lock.hcl
+
+# Terraform state (never commit)
+**/*.tfstate
+**/*.tfstate.*
+crash.log
 
 
 # .tfstate files
