@@ -60,15 +60,47 @@ variable "node_instance_type" {
   default     = "t3.small"
 }
 
-# Node group 1
-variable "ng1_min_size"     { type = number, default = 1 }
-variable "ng1_max_size"     { type = number, default = 3 }
-variable "ng1_desired_size" { type = number, default = 2 }
+############################################
+# Node group 1 sizing
+############################################
+variable "ng1_min_size" {
+  description = "Node group 1: minimum number of nodes"
+  type        = number
+  default     = 1
+}
 
-# Node group 2
-variable "ng2_min_size"     { type = number, default = 1 }
-variable "ng2_max_size"     { type = number, default = 2 }
-variable "ng2_desired_size" { type = number, default = 1 }
+variable "ng1_max_size" {
+  description = "Node group 1: maximum number of nodes"
+  type        = number
+  default     = 3
+}
+
+variable "ng1_desired_size" {
+  description = "Node group 1: desired number of nodes"
+  type        = number
+  default     = 2
+}
+
+############################################
+# Node group 2 sizing
+############################################
+variable "ng2_min_size" {
+  description = "Node group 2: minimum number of nodes"
+  type        = number
+  default     = 1
+}
+
+variable "ng2_max_size" {
+  description = "Node group 2: maximum number of nodes"
+  type        = number
+  default     = 2
+}
+
+variable "ng2_desired_size" {
+  description = "Node group 2: desired number of nodes"
+  type        = number
+  default     = 1
+}
 
 variable "tags" {
   description = "Extra tags"
