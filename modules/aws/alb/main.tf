@@ -1,29 +1,14 @@
-############################################
-# modules/aws/alb/main.tf
-# Purpose:
-# - Create IRSA role for AWS Load Balancer Controller
-# - Install controller via Helm chart in kube-system namespace
-#
-# IMPORTANT:
-# - This module expects the *caller* to configure AWS credentials.
-# - This module expects the *caller* to configure Helm/Kubernetes providers.
-############################################
-
 locals {
-  # IRSA typically wants the issuer without https://
-  oidc_issuer_no_scheme = replace(var.oidc_provider_url, "https://", "")
-
-  sa_namespace = "kube-system"
-  sa_name      = "aws-load-balancer-controller"
+  # Ensure we always use issuer WITHOUT https:// in the trust policy condition key
+  oidc_issuer_hostpath = replace(var.oidc_provider_url, "https://", "")
+  role_name            = "${var.cluster_name}-aws-lbc"
+  policy_name          = "${var.cluster_name}-AWSLoadBalancerControllerIAMPolicy"
 }
 
-############################################
-# IRSA trust policy (service account -> IAM role)
-############################################
-data "aws_iam_policy_document" "alb_assume_role" {
+data "aws_iam_policy_document" "assume_role" {
   statement {
-    actions = ["sts:AssumeRoleWithWebIdentity"]
     effect  = "Allow"
+    actions = ["sts:AssumeRoleWithWebIdentity"]
 
     principals {
       type        = "Federated"
@@ -32,53 +17,37 @@ data "aws_iam_policy_document" "alb_assume_role" {
 
     condition {
       test     = "StringEquals"
-      variable = "${local.oidc_issuer_no_scheme}:sub"
-      values   = ["system:serviceaccount:${local.sa_namespace}:${local.sa_name}"]
+      variable = "${local.oidc_issuer_hostpath}:sub"
+      values   = ["system:serviceaccount:${var.namespace}:${var.service_account_name}"]
     }
   }
 }
 
-resource "aws_iam_role" "alb_controller" {
-  name               = "${var.cluster_name}-alb-controller"
-  assume_role_policy = data.aws_iam_policy_document.alb_assume_role.json
+resource "aws_iam_role" "this" {
+  name               = local.role_name
+  assume_role_policy = data.aws_iam_policy_document.assume_role.json
 }
 
-############################################
-# IAM permissions for the controller
-#
-# NOTE:
-# AWS does NOT provide an AWS-managed policy ARN called
-# AWSLoadBalancerControllerIAMPolicy by default.
-#
-# In production you create a customer-managed policy using the official JSON
-# from AWS docs and attach it here.
-############################################
-
-# OPTION A (recommended): keep policy JSON in repo (fully automated)
-# Create a file: modules/aws/alb/iam_policy.json
-# and load it using file().
-resource "aws_iam_policy" "alb_controller" {
-  name        = "${var.cluster_name}-AWSLoadBalancerControllerIAMPolicy"
-  description = "Permissions for AWS Load Balancer Controller"
-  policy      = file("${path.module}/iam_policy.json")
+# Official controller IAM policy JSON (vendor it in Terraform so rebuilds are deterministic)
+# Source: kubernetes-sigs/aws-load-balancer-controller v3.1.0
+resource "aws_iam_policy" "this" {
+  name   = local.policy_name
+  policy = <<POLICY
+{ "Version": "2012-10-17", "Statement": [ { "Effect": "Allow", "Action": [ "iam:CreateServiceLinkedRole" ], "Resource": "*", "Condition": { "StringEquals": { "iam:AWSServiceName": "elasticloadbalancing.amazonaws.com" } } }, { "Effect": "Allow", "Action": [ "ec2:DescribeAccountAttributes", "ec2:DescribeAddresses", "ec2:DescribeAvailabilityZones", "ec2:DescribeInternetGateways", "ec2:DescribeVpcs", "ec2:DescribeVpcPeeringConnections", "ec2:DescribeSubnets", "ec2:DescribeSecurityGroups", "ec2:DescribeInstances", "ec2:DescribeNetworkInterfaces", "ec2:DescribeTags", "ec2:GetCoipPoolUsage", "ec2:DescribeCoipPools", "ec2:GetSecurityGroupsForVpc", "ec2:DescribeIpamPools", "ec2:DescribeRouteTables", "elasticloadbalancing:DescribeLoadBalancers", "elasticloadbalancing:DescribeLoadBalancerAttributes", "elasticloadbalancing:DescribeListeners", "elasticloadbalancing:DescribeListenerCertificates", "elasticloadbalancing:DescribeSSLPolicies", "elasticloadbalancing:DescribeRules", "elasticloadbalancing:DescribeTargetGroups", "elasticloadbalancing:DescribeTargetGroupAttributes", "elasticloadbalancing:DescribeTargetHealth", "elasticloadbalancing:DescribeTags", "elasticloadbalancing:DescribeTrustStores", "elasticloadbalancing:DescribeListenerAttributes", "elasticloadbalancing:DescribeCapacityReservation" ], "Resource": "*" }, { "Effect": "Allow", "Action": [ "cognito-idp:DescribeUserPoolClient", "acm:ListCertificates", "acm:DescribeCertificate", "iam:ListServerCertificates", "iam:GetServerCertificate", "waf-regional:GetWebACL", "waf-regional:GetWebACLForResource", "waf-regional:AssociateWebACL", "waf-regional:DisassociateWebACL", "wafv2:GetWebACL", "wafv2:GetWebACLForResource", "wafv2:AssociateWebACL", "wafv2:DisassociateWebACL", "shield:GetSubscriptionState", "shield:DescribeProtection", "shield:CreateProtection", "shield:DeleteProtection" ], "Resource": "*" }, { "Effect": "Allow", "Action": [ "ec2:AuthorizeSecurityGroupIngress", "ec2:RevokeSecurityGroupIngress" ], "Resource": "*" }, { "Effect": "Allow", "Action": [ "ec2:CreateSecurityGroup" ], "Resource": "*" }, { "Effect": "Allow", "Action": [ "ec2:CreateTags" ], "Resource": "arn:aws:ec2:*:*:security-group/*", "Condition": { "StringEquals": { "ec2:CreateAction": "CreateSecurityGroup" }, "Null": { "aws:RequestTag/elbv2.k8s.aws/cluster": "false" } } }, { "Effect": "Allow", "Action": [ "ec2:CreateTags", "ec2:DeleteTags" ], "Resource": "arn:aws:ec2:*:*:security-group/*", "Condition": { "Null": { "aws:RequestTag/elbv2.k8s.aws/cluster": "true", "aws:ResourceTag/elbv2.k8s.aws/cluster": "false" } } }, { "Effect": "Allow", "Action": [ "ec2:AuthorizeSecurityGroupIngress", "ec2:RevokeSecurityGroupIngress", "ec2:DeleteSecurityGroup" ], "Resource": "*", "Condition": { "Null": { "aws:ResourceTag/elbv2.k8s.aws/cluster": "false" } } }, { "Effect": "Allow", "Action": [ "elasticloadbalancing:CreateLoadBalancer", "elasticloadbalancing:CreateTargetGroup" ], "Resource": "*", "Condition": { "Null": { "aws:RequestTag/elbv2.k8s.aws/cluster": "false" } } }, { "Effect": "Allow", "Action": [ "elasticloadbalancing:CreateListener", "elasticloadbalancing:DeleteListener", "elasticloadbalancing:CreateRule", "elasticloadbalancing:DeleteRule" ], "Resource": "*" }, { "Effect": "Allow", "Action": [ "elasticloadbalancing:AddTags", "elasticloadbalancing:RemoveTags" ], "Resource": [ "arn:aws:elasticloadbalancing:*:*:targetgroup/*/*", "arn:aws:elasticloadbalancing:*:*:loadbalancer/net/*/*", "arn:aws:elasticloadbalancing:*:*:loadbalancer/app/*/*" ], "Condition": { "Null": { "aws:RequestTag/elbv2.k8s.aws/cluster": "true", "aws:ResourceTag/elbv2.k8s.aws/cluster": "false" } } }, { "Effect": "Allow", "Action": [ "elasticloadbalancing:AddTags", "elasticloadbalancing:RemoveTags" ], "Resource": [ "arn:aws:elasticloadbalancing:*:*:listener/net/*/*/*", "arn:aws:elasticloadbalancing:*:*:listener/app/*/*/*", "arn:aws:elasticloadbalancing:*:*:listener-rule/net/*/*/*", "arn:aws:elasticloadbalancing:*:*:listener-rule/app/*/*/*" ] }, { "Effect": "Allow", "Action": [ "elasticloadbalancing:ModifyLoadBalancerAttributes", "elasticloadbalancing:SetIpAddressType", "elasticloadbalancing:SetSecurityGroups", "elasticloadbalancing:SetSubnets", "elasticloadbalancing:DeleteLoadBalancer", "elasticloadbalancing:ModifyTargetGroup", "elasticloadbalancing:ModifyTargetGroupAttributes", "elasticloadbalancing:DeleteTargetGroup", "elasticloadbalancing:ModifyListenerAttributes", "elasticloadbalancing:ModifyCapacityReservation", "elasticloadbalancing:ModifyIpPools" ], "Resource": "*", "Condition": { "Null": { "aws:ResourceTag/elbv2.k8s.aws/cluster": "false" } } }, { "Effect": "Allow", "Action": [ "elasticloadbalancing:AddTags" ], "Resource": [ "arn:aws:elasticloadbalancing:*:*:targetgroup/*/*", "arn:aws:elasticloadbalancing:*:*:loadbalancer/net/*/*", "arn:aws:elasticloadbalancing:*:*:loadbalancer/app/*/*" ], "Condition": { "StringEquals": { "elasticloadbalancing:CreateAction": [ "CreateTargetGroup", "CreateLoadBalancer" ] }, "Null": { "aws:RequestTag/elbv2.k8s.aws/cluster": "false" } } }, { "Effect": "Allow", "Action": [ "elasticloadbalancing:RegisterTargets", "elasticloadbalancing:DeregisterTargets" ], "Resource": "arn:aws:elasticloadbalancing:*:*:targetgroup/*/*" }, { "Effect": "Allow", "Action": [ "elasticloadbalancing:SetWebAcl", "elasticloadbalancing:ModifyListener", "elasticloadbalancing:AddListenerCertificates", "elasticloadbalancing:RemoveListenerCertificates", "elasticloadbalancing:ModifyRule", "elasticloadbalancing:SetRulePriorities" ], "Resource": "*" } ] }
+POLICY
 }
 
-resource "aws_iam_role_policy_attachment" "alb_attach" {
-  role       = aws_iam_role.alb_controller.name
-  policy_arn = aws_iam_policy.alb_controller.arn
+resource "aws_iam_role_policy_attachment" "this" {
+  role       = aws_iam_role.this.name
+  policy_arn = aws_iam_policy.this.arn
 }
 
-############################################
-# Helm install
-############################################
-resource "helm_release" "alb_controller" {
+resource "helm_release" "this" {
   name       = "aws-load-balancer-controller"
-  namespace  = local.sa_namespace
+  namespace  = var.namespace
   repository = "https://aws.github.io/eks-charts"
   chart      = "aws-load-balancer-controller"
-
-  # Pin a known-good version (you can bump later intentionally)
-  version = "1.7.2"
+  version    = var.chart_version
 
   values = [
     yamlencode({
@@ -86,13 +55,19 @@ resource "helm_release" "alb_controller" {
       region      = var.region
       vpcId       = var.vpc_id
 
+      image = {
+        tag = var.image_tag
+      }
+
       serviceAccount = {
         create = true
-        name   = local.sa_name
+        name   = var.service_account_name
         annotations = {
-          "eks.amazonaws.com/role-arn" = aws_iam_role.alb_controller.arn
+          "eks.amazonaws.com/role-arn" = aws_iam_role.this.arn
         }
       }
     })
   ]
+
+  depends_on = [aws_iam_role_policy_attachment.this]
 }

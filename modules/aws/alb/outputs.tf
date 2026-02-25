@@ -1,8 +1,9 @@
-############################################
-# modules/aws/alb/outputs.tf
-############################################
-
 output "alb_controller_role_arn" {
-  value       = aws_iam_role.alb_controller.arn
-  description = "ARN of the IAM role created for AWS Load Balancer Controller (IRSA)"
+  value       = aws_iam_role.this.arn
+  description = "IRSA role ARN for AWS Load Balancer Controller"
+}
+
+output "alb_controller_policy_arn" {
+  value       = aws_iam_policy.this.arn
+  description = "IAM policy ARN attached to the controller role"
 }

@@ -1,99 +1,111 @@
-########################################################################################
-# AWS Load Balancer Controller (ALBC) - Production install
+############################################################
+# DEV EKS Environment Stack
 #
-# Purpose:
-# - Allows Kubernetes Ingress resources to create/manage AWS ALBs automatically.
-# - Required for production-grade HTTP/HTTPS ingress on EKS.
-#
-# Why here (env) and not in modules/aws/eks?
-# - EKS module should focus on EKS itself.
-# - Add-ons are "cluster software" installed *into* Kubernetes, so they live in the
-#   environment stack where we already have cluster context and ordering.
-########################################################################################
+# Responsibilities:
+# 1) Read networking remote state
+# 2) Create EKS cluster
+# 3) Configure Kubernetes + Helm providers
+# 4) Install AWS Load Balancer Controller (production IRSA)
+############################################################
 
-############################################
-# IRSA trust policy: ONLY this ServiceAccount can assume the IAM role
-############################################
-data "aws_iam_policy_document" "alb_assume_role" {
-  statement {
-    actions = ["sts:AssumeRoleWithWebIdentity"]
+############################################################
+# 1. Read Networking Workspace State
+############################################################
 
-    principals {
-      type        = "Federated"
-      identifiers = [module.eks.oidc_provider_arn]
-    }
+data "terraform_remote_state" "networking" {
+  backend = "remote"
 
-    condition {
-      test     = "StringEquals"
+  config = {
+    organization = "softnet-hcp-labs"
 
-      # OIDC issuer without https:// is required here
-      variable = "${replace(module.eks.oidc_provider, "https://", "")}:sub"
-
-      values = [
-        "system:serviceaccount:kube-system:aws-load-balancer-controller"
-      ]
+    workspaces = {
+      name = "ibank-aws-dev-networking"
     }
   }
 }
 
-############################################
-# IAM Role for ALBC (IRSA)
-############################################
-resource "aws_iam_role" "alb_controller" {
-  name               = "${module.eks.cluster_name}-alb-controller"
-  assume_role_policy = data.aws_iam_policy_document.alb_assume_role.json
+############################################################
+# 2. Create EKS Cluster
+############################################################
+
+module "eks" {
+  source = "../../../../modules/aws/eks"
+
+  region = var.region
+  env    = var.env
+
+  cluster_name_prefix = var.cluster_name_prefix
+  cluster_version     = var.cluster_version
+
+  cluster_endpoint_public_access  = var.cluster_endpoint_public_access
+  cluster_endpoint_private_access = var.cluster_endpoint_private_access
+
+  vpc_id             = data.terraform_remote_state.networking.outputs.vpc_id
+  private_subnet_ids = data.terraform_remote_state.networking.outputs.private_subnet_ids
+
+  node_instance_type = var.node_instance_type
+
+  ng1_min_size     = var.ng1_min_size
+  ng1_max_size     = var.ng1_max_size
+  ng1_desired_size = var.ng1_desired_size
+
+  ng2_min_size     = var.ng2_min_size
+  ng2_max_size     = var.ng2_max_size
+  ng2_desired_size = var.ng2_desired_size
+
+  tags = {
+    Environment = var.env
+    ManagedBy   = "Terraform"
+    Project     = "iBank"
+  }
 }
 
-############################################
-# Attach permissions policy
-#
-# NOTE:
-# - If your account does not have this managed policy, apply will fail.
-# - If that happens, tell me and I’ll give you the official AWS policy JSON
-#   as code (aws_iam_policy) + attachment (still no manual steps).
-############################################
-resource "aws_iam_role_policy_attachment" "alb_attach" {
-  role       = aws_iam_role.alb_controller.name
-  policy_arn = "arn:aws:iam::aws:policy/AWSLoadBalancerControllerIAMPolicy"
+############################################################
+# 3. Configure Kubernetes + Helm Providers
+############################################################
+
+data "aws_eks_cluster" "this" {
+  name = module.eks.cluster_name
 }
 
-############################################
-# Install ALBC using Helm
-############################################
-resource "helm_release" "aws_load_balancer_controller" {
-  count      = var.install_cluster_addons ? 1 : 0
-
-  name       = "aws-load-balancer-controller"
-  namespace  = "kube-system"
-  repository = "https://aws.github.io/eks-charts"
-  chart      = "aws-load-balancer-controller"
-
-  # Pin version for production stability
-  version    = "1.7.2"
-
-  values = [
-    yamlencode({
-      clusterName = module.eks.cluster_name
-      region      = var.region
-      vpcId       = data.terraform_remote_state.networking.outputs.vpc_id
-
-      serviceAccount = {
-        create = true
-        name   = "aws-load-balancer-controller"
-        annotations = {
-          "eks.amazonaws.com/role-arn" = aws_iam_role.alb_controller.arn
-        }
-      }
-    })
-  ]
+data "aws_eks_cluster_auth" "this" {
+  name = module.eks.cluster_name
 }
+
+provider "kubernetes" {
+  host                   = data.aws_eks_cluster.this.endpoint
+  cluster_ca_certificate = base64decode(
+    data.aws_eks_cluster.this.certificate_authority[0].data
+  )
+  token = data.aws_eks_cluster_auth.this.token
+}
+
+provider "helm" {
+  kubernetes {
+    host                   = data.aws_eks_cluster.this.endpoint
+    cluster_ca_certificate = base64decode(
+      data.aws_eks_cluster.this.certificate_authority[0].data
+    )
+    token = data.aws_eks_cluster_auth.this.token
+  }
+}
+
+############################################################
+# 4. Install AWS Load Balancer Controller (Production)
+############################################################
 
 module "alb_controller" {
   source = "../../../../modules/aws/alb"
+
+  providers = {
+    aws        = aws
+    kubernetes = kubernetes
+    helm       = helm
+  }
 
   cluster_name      = module.eks.cluster_name
   region            = var.region
   vpc_id            = data.terraform_remote_state.networking.outputs.vpc_id
   oidc_provider_arn = module.eks.oidc_provider_arn
-  oidc_provider_url = module.eks.oidc_provider
+  oidc_provider_url = module.eks.cluster_oidc_issuer_url
 }
