@@ -31,3 +31,8 @@ output "hcp_agent_private_ip" {
   description = "Private IP of the agent instance"
   value       = aws_instance.hcp_agent.private_ip
 }
+
+output "hcp_agent_role_arn" {
+  description = "IAM role ARN assumed by the HCP Agent EC2 instance (for EKS access entries)"
+  value       = aws_iam_role.hcp_agent.arn
+}

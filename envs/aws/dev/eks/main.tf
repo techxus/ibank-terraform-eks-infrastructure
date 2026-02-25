@@ -45,6 +45,8 @@ module "eks" {
 
   node_instance_type = var.node_instance_type
 
+  hcp_agent_role_arn = data.terraform_remote_state.networking.outputs.hcp_agent_role_arn
+
   ng1_min_size     = var.ng1_min_size
   ng1_max_size     = var.ng1_max_size
   ng1_desired_size = var.ng1_desired_size

@@ -75,3 +75,8 @@ variable "install_cluster_addons" {
   type        = bool
   default     = true
 }
+
+variable "hcp_agent_role_arn" {
+  description = "IAM role ARN of the HCP Terraform Agent (EC2) that runs inside the VPC"
+  type        = string
+}
