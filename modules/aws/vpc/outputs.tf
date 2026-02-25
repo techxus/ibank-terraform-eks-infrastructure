@@ -11,7 +11,7 @@
 ########################################################################################
 
 output "vpc_id" {
-  description = "VPC ID"
+  description = "The VPC ID"
   value       = module.vpc.vpc_id
 }
 
