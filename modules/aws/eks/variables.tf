@@ -129,3 +129,7 @@ variable "tags" {
   type        = map(string)
   default     = {}
 }
+
+variable "hcp_agent_role_arn" {
+  type = string
+}
