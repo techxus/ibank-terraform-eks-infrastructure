@@ -20,3 +20,7 @@ variable "single_nat_gateway" {
   default = true
 }
 
+variable "hcp_agent_token" {
+  type      = string
+  sensitive = true
+}
