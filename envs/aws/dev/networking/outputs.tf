@@ -6,12 +6,12 @@
 ############################################
 
 output "vpc_id" {
-  description = "VPC ID for the environment"
+  description = "VPC ID for this environment"
   value       = module.vpc.vpc_id
 }
 
 output "private_subnet_ids" {
-  description = "Private subnet IDs for EKS nodes"
+  description = "Private subnet IDs for this environment"
   value       = module.vpc.private_subnet_ids
 }
 
