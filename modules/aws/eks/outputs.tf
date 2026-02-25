@@ -1,7 +1,7 @@
 ############################################
 # modules/aws/eks/outputs.tf
 # Purpose:
-# - Export values other stacks need (IRSA, kubectl access, etc.)
+# - Expose values other stacks need (like ALB Controller IRSA)
 ############################################
 
 output "cluster_name" {
@@ -10,7 +10,7 @@ output "cluster_name" {
 }
 
 output "cluster_endpoint" {
-  description = "EKS API endpoint"
+  description = "EKS control plane endpoint"
   value       = module.eks.cluster_endpoint
 }
 
@@ -20,15 +20,20 @@ output "cluster_security_group_id" {
 }
 
 ############################################
-# OIDC / IRSA outputs
+# OIDC outputs (used for IRSA)
 ############################################
 
+output "oidc_provider_arn" {
+  description = "ARN of the IAM OIDC Provider for this cluster (used by IRSA)."
+  value       = module.eks.oidc_provider_arn
+}
+
 output "oidc_provider" {
-  description = "OIDC issuer URL for the cluster (includes https://)"
+  description = "OIDC issuer host/path WITHOUT https:// (convenient for IRSA conditions)."
   value       = module.eks.oidc_provider
 }
 
-output "oidc_provider_arn" {
-  description = "ARN of the IAM OIDC provider (needed for IRSA)"
-  value       = module.eks.oidc_provider_arn
+output "cluster_oidc_issuer_url" {
+  description = "OIDC issuer URL WITH https:// (source of truth from EKS API)."
+  value       = data.aws_eks_cluster.this.identity[0].oidc[0].issuer
 }
