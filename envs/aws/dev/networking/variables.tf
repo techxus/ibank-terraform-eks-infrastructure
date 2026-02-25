@@ -21,6 +21,7 @@ variable "single_nat_gateway" {
 }
 
 variable "hcp_agent_token" {
-  type      = string
-  sensitive = true
+  description = "HCP Terraform Agent token (from the agent pool)."
+  type        = string
+  sensitive   = true
 }

@@ -122,11 +122,16 @@ resource "aws_instance" "hcp_agent" {
     systemctl enable docker
     systemctl start docker
 
-    # Run HCP Terraform Agent container
+    # Optional: allow ec2-user to run docker without sudo (SSM sessions still may vary)
+    usermod -aG docker ec2-user || true
+
+    # Run HCP Terraform Agent container with required token
+    docker rm -f hcp-terraform-agent || true
     docker run -d --restart unless-stopped \
       --name hcp-terraform-agent \
+      -e TFC_AGENT_TOKEN='${var.hcp_agent_token}' \
       hashicorp/tfc-agent:latest
-  EOF
+EOF
 
   tags = {
     Name        = "ibank-${var.env}-hcp-agent"
