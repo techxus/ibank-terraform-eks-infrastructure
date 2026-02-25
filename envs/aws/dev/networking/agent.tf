@@ -103,8 +103,9 @@ resource "aws_instance" "hcp_agent" {
   # Encrypt root disk
   root_block_device {
     encrypted = true
-    volume_size = 20
+    volume_size = 30
     volume_type = "gp3"
+    delete_on_termination = true
   }
 
   ############################################
